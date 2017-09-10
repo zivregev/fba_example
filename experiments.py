@@ -29,7 +29,7 @@ def run_example_1():
 
 
 def run_example_2():
-    print("Maximum yield of cofactors and precursors")
+    print("Maximum yield of cofactors from glucose")
     model = cobra.test.create_test_model("textbook")
     experiments = []
     for cofactor in [fba.ATPM, fba.NADH, fba.NADPH]:
@@ -39,15 +39,12 @@ def run_example_2():
 
 
 def run_example_2_1():
-    print("Maximum yield of cofactors and precursors")
+    print("Maximum yield of biosynthetic precursors from glucose")
     model = cobra.test.create_test_model("textbook")
-    target = fba.get_cytosolic_metabolite(model, "3pg")
-    drain_reaction = cobra.Reaction(target.id.upper() + fba.CofactorAndPrecursorsFBATest.drain_suffix)
-    drain_reaction.name = target.id + " drain reaction"
-    drain_reaction.add_metabolites({target: -1.0})
-    model.add_reaction(drain_reaction)
-    model.objective = drain_reaction
-    print(model.optimize().objective_value)
+    experiments=[]
+    for precursor in [fba.threePG, fba.PEP, fba.PYR, fba.OAA, fba.G6P, fba.F6P, fba.R5P, fba.E4P, fba.G3P, fba.ACCOA, fba.AKG, fba.SUCCOA]:
+        experiments.append(fba.CofactorAndPrecursorsFBATest(drain_target=precursor,aerobic=True))
+    run_experiments_and_print_result(model,experiments)
 
 
 def run_example_3_1():

@@ -24,7 +24,18 @@ ATPM = "ATPM"
 NADH = "NADH"
 NADPH = "NADPH"
 proton = "h"
-threePG = "3pg"
+threePG = "3PG"
+PEP="PEP"
+PYR="PYR"
+OAA="OAA"
+G6P="G6P"
+F6P="F6P"
+R5P="R5P"
+E4P="E4P"
+G3P="G3P"
+ACCOA="ACCOA"
+AKG="AKG"
+SUCCOA="SUCCOA"
 malic_enzyme_NAD = "ME1"
 malic_enzyme_NADPH = "ME2"
 fumarate_reductaase = "FRD7"
@@ -51,10 +62,10 @@ def setup_oxygen_bounds(experiment, aerobic, exact_oxygen_bound):
     if exact_oxygen_bound is not None:
         experiment.reactions_bounds.append(ExactSubstrateReactionBounds(oxygen, exact_oxygen_bound))
         experiment.name = experiment.name + "exact_oxygen"
-    elif aerobic:
+    elif aerobic is True:
         experiment.name = experiment.name + "aerobic"
         experiment.reactions_bounds.append(UnlimitedSubstrateReactionBounds(oxygen))
-    elif aerobic is None:
+    elif aerobic is False:
         experiment.name = experiment.name + "unaerobic"
         experiment.reactions_bounds.append(UnavailableSubstrateReactionBounds(oxygen))
 
@@ -77,11 +88,11 @@ def setup_drain_target(experiment, drain_target):
         if drain_target == ATPM:
             experiment.reactions_bounds.append(ReactionBounds(reaction_name=ATPM, lower_bound=0))
             experiment.objective_function_name = ATPM
-            experiment.target = None
+            experiment.drain_target = None
         else:
             experiment.reactions_bounds.append(ExactReactionBounds(reaction_name=ATPM, bound=0))
             experiment.objective_function_name = drain_target + CofactorAndPrecursorsFBATest.drain_suffix
-            experiment.target = drain_target.lower()
+            experiment.drain_target = drain_target.lower()
 
 
 class FBAExperiment:
@@ -131,13 +142,6 @@ class SubstrateFBAExperiment(FBAExperiment):
                                                      substrate=substrate, exact_substrate_bound=exact_substrate_bound,
                                                      aerobic=aerobic, exact_oxygen_bound=exact_oxygen_bound)
 
-        # if specific_substrate_bound == None:
-        #     self.reactions_bounds.append(RealisticSubstrateReactionBounds(substrate))
-        # else:
-        #     self.reactions_bounds.append(ExactSubstrateReactionBounds(substrate, specific_substrate_bound))
-        # if not substrate == d_glucose:
-        #     self.reactions_bounds.append(UnavailableSubstrateReactionBounds(d_glucose))
-
     def run(self, model):
         return super(SubstrateFBAExperiment, self).run(model)
 
@@ -158,14 +162,18 @@ class CofactorAndPrecursorsFBATest(FBAExperiment):
 
     def run(self, model):
         if self.drain_target:
-            oxidized_target = get_cytosolic_metabolite(model, self.drain_target[:-1])
-            reduced_target = get_cytosolic_metabolite(model, self.drain_target)
-            released_proton = get_cytosolic_metabolite(model, proton)
             drain_reaction = cobra.Reaction(self.drain_target.upper() + CofactorAndPrecursorsFBATest.drain_suffix)
             drain_reaction.name = self.drain_target + " drain reaction"
-            drain_reaction.add_metabolites({reduced_target: -1.0,
-                                            oxidized_target: 1.0,
-                                            released_proton: 1.0})
+            if self.drain_target.upper() in [NADH, NADPH]:
+                oxidized_target = get_cytosolic_metabolite(model, self.drain_target[:-1])
+                reduced_target = get_cytosolic_metabolite(model, self.drain_target)
+                released_proton = get_cytosolic_metabolite(model, proton)
+                drain_reaction.add_metabolites({reduced_target: -1.0,
+                                                oxidized_target: 1.0,
+                                                released_proton: 1.0})
+            else:
+                drain_target_metabolite = get_cytosolic_metabolite(model, self.drain_target)
+                drain_reaction.add_metabolites({drain_target_metabolite: -1.0})
             model.add_reaction(drain_reaction)
         opt_solution = super(CofactorAndPrecursorsFBATest, self).run(model)
         return opt_solution
