@@ -41,10 +41,11 @@ def run_example_2():
 def run_example_2_1():
     print("Maximum yield of biosynthetic precursors from glucose")
     model = cobra.test.create_test_model("textbook")
-    experiments=[]
-    for precursor in [fba.threePG, fba.PEP, fba.PYR, fba.OAA, fba.G6P, fba.F6P, fba.R5P, fba.E4P, fba.G3P, fba.ACCOA, fba.AKG, fba.SUCCOA]:
-        experiments.append(fba.CofactorAndPrecursorsFBATest(drain_target=precursor,aerobic=True))
-    run_experiments_and_print_result(model,experiments)
+    experiments = []
+    for precursor in [fba.threePG, fba.PEP, fba.PYR, fba.OAA, fba.G6P, fba.F6P, fba.R5P, fba.E4P, fba.G3P, fba.ACCOA,
+                      fba.AKG, fba.SUCCOA]:
+        experiments.append(fba.CofactorAndPrecursorsFBATest(drain_target=precursor, aerobic=True))
+    run_experiments_and_print_result(model, experiments)
 
 
 def run_example_3_1():
@@ -155,15 +156,18 @@ def run_example_6_1():
                                      experiments=[fba.KnockoutExperiment(reactions_to_ko=[fba.PFK], aerobic=True),
                                                   fba.KnockoutExperiment(genes_to_ko=[fba.PFK_A_gene], aerobic=True),
                                                   fba.KnockoutExperiment(genes_to_ko=[fba.PFK_B_gene], aerobic=True),
-                                                  fba.KnockoutExperiment(genes_to_ko=[fba.PFK_A_gene, fba.PFK_B_gene], aerobic=True),
+                                                  fba.KnockoutExperiment(genes_to_ko=[fba.PFK_A_gene, fba.PFK_B_gene],
+                                                                         aerobic=True),
                                                   fba.SubstrateFBAExperiment(substrate=fba.d_glucose, aerobic=True),
-                                                  fba.KnockoutExperiment(substrate=fba.d_glucose, genes_to_ko=[fba.G6PDH2r_gene], aerobic=True),
-                                                  fba.KnockoutExperiment(substrate=fba.d_glucose, genes_to_ko=[fba.ENO_gene], aerobic=True)])
+                                                  fba.KnockoutExperiment(substrate=fba.d_glucose,
+                                                                         genes_to_ko=[fba.G6PDH2r_gene], aerobic=True),
+                                                  fba.KnockoutExperiment(substrate=fba.d_glucose,
+                                                                         genes_to_ko=[fba.ENO_gene], aerobic=True)])
 
 
 def run_example_6_2():
     model = cobra.test.create_test_model("textbook")
-    single_deletion_results = single_gene_deletion(cobra_model=model,gene_list=[fba.ENO_gene,fba.PFK_B_gene])
+    single_deletion_results = single_gene_deletion(cobra_model=model, gene_list=[fba.ENO_gene, fba.PFK_B_gene])
     print(single_deletion_results)
 
 
@@ -177,7 +181,13 @@ def run_example_6_3():
 
 def run_example_7():
     model = cobra.test.create_test_model("textbook")
-    biomass_reaction=model.reactions.get_by_id("Biomass_Ecoli_core")
-    for metabolite in biomass_reaction.metabolites.keys():
-        print(metabolite, ":", biomass_reaction.metabolites.get(metabolite))
-    print(biomass_reaction.reaction)
+    biomass_reaction = model.reactions.get_by_id("Biomass_Ecoli_core")
+    biomass_precursors = [metabolite for metabolite in biomass_reaction.metabolites if
+                          biomass_reaction.metabolites.get(metabolite) < 0]
+    demand_reactions = {metabolite: model.add_boundary(metabolite=metabolite, type="demand") for metabolite in biomass_precursors}
+    mutant_biomass=np.zeros((len(model.genes), len(biomass_precursors)))
+    for i, precursor in enumerate(biomass_precursors):
+        for j,gene in enumerate(model.genes):
+            with model as model:
+                gene.knock_out()
+                mutant_biomass[j,i] = model.optimize().objective_value

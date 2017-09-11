@@ -1,3 +1,4 @@
 import experiments
 
-experiments.run_example_2_1()
+experiments.run_example_6_3()
+# experiments.run_ex()
