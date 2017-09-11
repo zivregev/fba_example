@@ -7,6 +7,7 @@ from cobra.flux_analysis import (
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LightSource
+import pandas as pd
 
 
 def run_experiments_and_print_result(model, experiments):
@@ -182,12 +183,26 @@ def run_example_6_3():
 def run_example_7():
     model = cobra.test.create_test_model("textbook")
     biomass_reaction = model.reactions.get_by_id("Biomass_Ecoli_core")
-    biomass_precursors = [metabolite for metabolite in biomass_reaction.metabolites if
-                          biomass_reaction.metabolites.get(metabolite) < 0]
+    biomass_precursors = [metabolite for metabolite in biomass_reaction.metabolites]
+    #  if biomass_reaction.metabolites.get(metabolite) < 0
     demand_reactions = {metabolite: model.add_boundary(metabolite=metabolite, type="demand") for metabolite in biomass_precursors}
-    mutant_biomass=np.zeros((len(model.genes), len(biomass_precursors)))
+    wt_growth_rate = {}
+    for precursor in biomass_precursors:
+        with model as model:
+            model.objective = demand_reactions[precursor]
+            wt_growth_rate[precursor] = fba.get_model_soultion(model).objective_value
+    mutant_biomass = np.zeros((len(model.genes), len(biomass_precursors)))
     for i, precursor in enumerate(biomass_precursors):
-        for j,gene in enumerate(model.genes):
-            with model as model:
-                gene.knock_out()
-                mutant_biomass[j,i] = model.optimize().objective_value
+        if wt_growth_rate[precursor] < fba.zero_threshold:
+            mutant_biomass[:, i] = 0.0
+        else:
+            for j,gene in enumerate(model.genes):
+                with model as model:
+                    gene.knock_out()
+                    model.objective = demand_reactions[precursor]
+                    objective_value = fba.get_model_soultion(model).objective_value
+                    mutant_biomass[j, i] = objective_value / wt_growth_rate[precursor]
+    df = pd.DataFrame(data=mutant_biomass)
+    plt.imshow(df, aspect="auto")
+    plt.colorbar()
+    plt.show()

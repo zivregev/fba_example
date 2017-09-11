@@ -57,6 +57,15 @@ organic_exchange_realistic_lower_bound = -20.0
 unlimited_reaction_bound = 1000.0
 limited_reaction_bound = 0.0
 
+zero_threshold = 1E-8
+
+def get_model_soultion(model):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        solution = model.optimize()
+        if (not solution.status == "optimal") or solution.objective_value < zero_threshold:
+            solution.objective_value=0.0
+        return solution
 
 def setup_oxygen_bounds(experiment, aerobic, exact_oxygen_bound):
     if exact_oxygen_bound is not None:
@@ -120,10 +129,7 @@ class FBAExperiment:
         self.set_model_bounds(model)
         if self.objective_function_name:
             model.objective = model.reactions.get_by_id(self.objective_function_name)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            solution = model.optimize()
-            return solution
+            get_model_soultion(model)
 
     def run_experiment_and_print_result(self, model):
         pass
